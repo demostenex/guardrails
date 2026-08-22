@@ -1,0 +1,17 @@
+{
+  "name": "guardrails",
+  "version": "0.1.0",
+  "description": "Code health guardrails for fast AI-assisted development workflows.",
+  "type": "module",
+  "bin": {
+    "guardrails": "./bin/guardrails.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "guardrails": "node ./bin/guardrails.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,61 @@
+project:
+  name: guardrails
+  language: javascript
+
+scan:
+  include:
+    - bin/**/*.js
+    - src/**/*.js
+  exclude:
+    - .git/**
+    - .guardrails/**
+    - node_modules/**
+    - dist/**
+    - coverage/**
+
+rules:
+  max_file_lines: 220
+  max_function_lines: 60
+  max_service_methods: 12
+  min_duplicate_body_chars: 80
+
+policies:
+  architecture_violation: block
+  duplicate_functions: warn
+  large_file: warn
+  large_service: warn
+  long_function: warn
+  todo_comment: warn
+  vibe_large_change_surface: warn
+
+architecture:
+  layers:
+    - cli
+    - config
+    - core
+    - scanner
+    - parser
+    - analyzers
+    - baseline
+    - report
+    - scoring
+    - findings
+  forbidden_imports:
+    - from: config
+      to: cli
+    - from: scanner
+      to: cli
+    - from: analyzers
+      to: cli
+    - from: parser
+      to: cli
+    - from: baseline
+      to: cli
+    - from: report
+      to: cli
+
+vibe:
+  max_files_changed_for_small_diff: 8
+  warn_on_unconnected_new_files: true
+  warn_on_duplicate_service_intent: true
+  warn_on_many_new_abstractions: true

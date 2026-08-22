@@ -1,0 +1,9 @@
+.guardrails/report.md
+.guardrails/report.json
+.guardrails/latest.json
+.guardrails/analysis.md
+.guardrails/analysis.json
+.guardrails/history/
+coverage/
+node_modules/
+dist/
