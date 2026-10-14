@@ -1,3 +1,5 @@
+import { mutationMarkdownLines } from "../mutation/format-mutation.js";
+
 const SEVERITY_LABELS = {
   critical: "Crítico",
   high: "Alto",
@@ -46,6 +48,8 @@ export function generateMarkdownReport(result) {
   if (result.findings.length === 0) {
     lines.push("Nenhum problema encontrado.", "");
   }
+
+  lines.push(...mutationMarkdownLines(result.mutation));
 
   return `${lines.join("\n").trimEnd()}\n`;
 }

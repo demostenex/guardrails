@@ -45,6 +45,7 @@ export const defaultConfig = {
     large_file: "warn",
     large_service: "warn",
     long_function: "warn",
+    mutation_score_drop: "warn",
     similar_functions: "warn",
     todo_comment: "warn",
     vibe_large_change_surface: "warn"
@@ -56,6 +57,15 @@ export const defaultConfig = {
   architecture: {
     layers: ["ui", "app", "domain", "services", "infra"],
     forbidden_imports: []
+  },
+  mutation: {
+    provider: "infection",
+    summary: null,
+    scope_note: "",
+    max_age_hours: 168,
+    fail_on_stale: false,
+    min_msi: null,
+    max_drop: null
   },
   vibe: {
     max_files_changed_for_small_diff: 8,

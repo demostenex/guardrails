@@ -36,6 +36,7 @@ export function compareReports(previous, current) {
       resolved: resolvedFindings.length,
       unchanged: unchangedFindings.length
     },
+    mutation: compareMutation(previous.mutation, current.mutation),
     byRule: compareCounts(countByRule(previous.findings), countByRule(current.findings)),
     newFindings,
     resolvedFindings,
@@ -52,8 +53,49 @@ export function generateCompareText(comparison) {
     `Findings: ${comparison.findings.from} -> ${comparison.findings.to} (${formatDelta(comparison.findings.delta)})`,
     `New findings: ${comparison.findings.new}`,
     `Resolved findings: ${comparison.findings.resolved}`,
-    `Unchanged findings: ${comparison.findings.unchanged}`
+    `Unchanged findings: ${comparison.findings.unchanged}`,
+    ...mutationCompareLines(comparison.mutation)
   ].join("\n");
+}
+
+function compareMutation(previous, current) {
+  if (previous?.status !== "ok" || current?.status !== "ok") {
+    return null;
+  }
+
+  return {
+    msi: { from: previous.msi, to: current.msi, delta: round(current.msi - previous.msi) },
+    survivors: {
+      from: previous.survivors,
+      to: current.survivors,
+      delta: current.survivors - previous.survivors
+    },
+    scopeChanged: (previous.scopeNote ?? "") !== (current.scopeNote ?? ""),
+    scopes: { from: previous.scopeNote ?? "", to: current.scopeNote ?? "" }
+  };
+}
+
+function mutationCompareLines(mutation) {
+  if (!mutation) {
+    return [];
+  }
+
+  const lines = [
+    `MSI: ${mutation.msi.from}% -> ${mutation.msi.to}% (${formatDelta(mutation.msi.delta)})`,
+    `Survivors: ${mutation.survivors.from} -> ${mutation.survivors.to} (${formatDelta(mutation.survivors.delta)})`
+  ];
+
+  if (mutation.scopeChanged) {
+    lines.push(
+      `Mutation scope changed ("${mutation.scopes.from}" -> "${mutation.scopes.to}"): MSI values are not directly comparable.`
+    );
+  }
+
+  return lines;
+}
+
+function round(value) {
+  return Math.round(value * 100) / 100;
 }
 
 function mapFindingsById(findings) {

@@ -1,6 +1,7 @@
 import { analyzeProject } from "../analyzers/index.js";
 import { loadBaseline, markBaselineFindings } from "../baseline/baseline-store.js";
 import { loadConfig } from "../config/load-config.js";
+import { readMutationSummary } from "../mutation/read-mutation-summary.js";
 import { parseFile } from "../parser/generic-parser.js";
 import { scanFiles } from "../scanner/file-scanner.js";
 import { scoreProject } from "../scoring/score-project.js";
@@ -15,9 +16,15 @@ export async function scanProject(projectPath = process.cwd(), options = {}) {
     changedFiles: options.changedFiles
   });
 
+  const mutation = await readMutationSummary(projectPath, config);
+
   if (options.useBaseline !== false) {
     const baseline = await loadBaseline(projectPath);
     findings = markBaselineFindings(findings, baseline);
+
+    if (baseline.mutation) {
+      mutation.baseline = baseline.mutation;
+    }
   }
 
   findings = sortFindings(findings);
@@ -28,6 +35,7 @@ export async function scanProject(projectPath = process.cwd(), options = {}) {
     filesScanned: files.length,
     score: scoreProject(findings, { filesScanned: files.length }),
     findings,
+    mutation,
     config
   };
 }

@@ -45,6 +45,8 @@ async function runCi(projectPath, _parsedArgs, io) {
   const ci = evaluateCi(result);
   printScanSummary(result, reports, io);
 
+  printMutationGate(ci.mutation, io);
+
   if (!ci.passed) {
     writeLine(io.stdout, `${ci.blockedFindings} blocked finding(s).`);
     io.exitCode = 1;
@@ -54,10 +56,31 @@ async function runCi(projectPath, _parsedArgs, io) {
   writeLine(io.stdout, "0 blocked finding(s).");
 }
 
+function printMutationGate(gate, io) {
+  const label = gate.policy === "block" ? "Mutation gate FAILED" : "Mutation warning";
+  const hasGateMessages = gate.violations.length + gate.notices.length > 0;
+
+  if (hasGateMessages && gate.policy !== "block") {
+    writeLine(io.stdout, "Mutation policy is warn: these do not fail ci.");
+  }
+
+  for (const violation of gate.violations) {
+    writeLine(io.stdout, `${label}: ${violation}`);
+  }
+
+  for (const notice of gate.notices) {
+    writeLine(io.stdout, `Mutation notice: ${notice}`);
+  }
+}
+
 async function runBaseline(projectPath, _parsedArgs, io) {
   const result = await scanProject(projectPath, { useBaseline: false });
   const baseline = await saveBaseline(projectPath, result);
   writeLine(io.stdout, `Baseline saved with ${baseline.findings.length} finding(s).`);
+
+  for (const warning of result.mutation?.warnings ?? []) {
+    writeLine(io.stdout, `Mutation warning: ${warning} Baseline MSI may be outdated.`);
+  }
 }
 
 async function runReport(projectPath, _parsedArgs, io) {

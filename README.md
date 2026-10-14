@@ -87,6 +87,35 @@ architecture:
       to: ui
 ```
 
+## Mutation Testing
+
+Guardrails never runs Infection (or any test suite). The observed project runs
+it and Guardrails only reads the resulting `infection-summary.json`
+(`logs.summaryJson` in `infection.json5`):
+
+```yaml
+mutation:
+  provider: infection
+  summary: storage/logs/infection-summary.json   # relative to --path
+  scope_note: "Billing module"   # free text; shown next to the MSI
+  max_age_hours: 168             # warn when the file is older
+  fail_on_stale: false           # treat an old file as a violation
+  min_msi: null                  # optional floor
+  max_drop: 2.0                  # max points lost versus baseline MSI
+
+policies:
+  mutation_score_drop: block     # or warn
+```
+
+- No `summary` configured, or file missing: `scan` and `ci` report "sem dados de mutação" and never fail because of it.
+- Each scan adds a "Mutação" section to `report.md` and a `mutation.json` to the history version. `compare` shows MSI and survivor deltas; `maturity` and `explain` show the current MSI. Survivors are escaped plus not-covered mutants.
+- `guardrails baseline` also stores the current MSI and scope. `ci` then fails (with `block`) when MSI falls more than `max_drop` points below it, or below `min_msi`.
+- If `min_msi` or `max_drop` is set and the summary file is missing, that is a violation (fails with `block`), so a CI that forgot to run Infection cannot pass silently.
+- If `scope_note` differs between baseline and current scan, `max_drop` cannot be compared: that is a violation until `guardrails baseline` is run again.
+- A stale summary prints a warning in `ci` and `baseline`; with `fail_on_stale: true` it is a violation.
+- An unreadable or unsupported summary format is reported with a clear error and counts as a violation of the policy.
+- Gate against drops, not against a high target: chasing 100% MSI leads to tests that only kill equivalent mutants.
+
 ## TDD Contract
 
 Every new guardrail rule should start as a fixture-driven test. Bugs should be reproduced with a failing test before the implementation changes.

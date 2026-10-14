@@ -16,6 +16,7 @@ export async function saveHistoryVersion(projectPath, result) {
 
   await mkdir(historyPath, { recursive: true });
   await Promise.all([
+    writeMutation(historyPath, versionedResult),
     writeFile(path.join(historyPath, "report.md"), generateMarkdownReport(versionedResult)),
     writeFile(path.join(historyPath, "report.json"), generateJsonReport(versionedResult)),
     writeFile(path.join(historyPath, "summary.json"), `${JSON.stringify(summarizeReport(versionedResult), null, 2)}\n`)
@@ -26,6 +27,16 @@ export async function saveHistoryVersion(projectPath, result) {
     historyPath,
     result: versionedResult
   };
+}
+
+async function writeMutation(historyPath, result) {
+  if (result.mutation?.status !== "ok") {
+    return;
+  }
+
+  const { baseline: _baseline, ...mutation } = result.mutation;
+  const content = { ...mutation, historyId: result.historyId };
+  await writeFile(path.join(historyPath, "mutation.json"), `${JSON.stringify(content, null, 2)}\n`);
 }
 
 export async function writeLatest(projectPath, historyVersion) {

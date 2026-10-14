@@ -1,4 +1,5 @@
 import { generateCompareText } from "../compare/compare-reports.js";
+import { mutationMaturityLine } from "../mutation/format-mutation.js";
 import { assessMaturity } from "../maturity/assess-maturity.js";
 
 export function buildAnalysis(report, comparison = null) {
@@ -37,6 +38,7 @@ export function generateAnalysisMarkdown(analysis) {
     `Score: ${analysis.maturity.score}/100`,
     `Findings: ${analysis.maturity.findings}`,
     `High/Critical findings: ${analysis.maturity.highFindings}`,
+    mutationMaturityLine(analysis.maturity.mutation),
     ""
   ];
 
@@ -188,6 +190,7 @@ function buildAiPrompt(report, maturity, trend, priorities) {
     `Files scanned: ${report.filesScanned}`,
     `Findings: ${report.findings.length}`,
     `Maturity: ${maturity.label}`,
+    mutationMaturityLine(maturity.mutation),
     `Trend: ${trend.summary}`,
     "",
     "Top inspection priorities:",

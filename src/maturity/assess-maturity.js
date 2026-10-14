@@ -1,3 +1,5 @@
+import { mutationMaturityLine } from "../mutation/format-mutation.js";
+
 export function assessMaturity(result) {
   const level = maturityLevel(result.score);
   const dominantRules = topCounts(result.findings, (finding) => finding.ruleId).map(
@@ -16,6 +18,7 @@ export function assessMaturity(result) {
     filesScanned: result.filesScanned,
     findings: result.findings.length,
     highFindings,
+    mutation: result.mutation ?? null,
     level: level.id,
     label: level.label,
     dominantRules,
@@ -32,6 +35,7 @@ export function generateMaturityText(maturity) {
     `Files scanned: ${maturity.filesScanned}`,
     `Findings: ${maturity.findings}`,
     `High/Critical findings: ${maturity.highFindings}`,
+    mutationMaturityLine(maturity.mutation),
     "",
     "Dominant rules:"
   ];

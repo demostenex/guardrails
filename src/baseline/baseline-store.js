@@ -27,6 +27,14 @@ export async function saveBaseline(projectPath, scanResult) {
     }))
   };
 
+  if (scanResult.mutation?.status === "ok") {
+    baseline.mutation = {
+      msi: scanResult.mutation.msi,
+      survivors: scanResult.mutation.survivors,
+      scopeNote: scanResult.mutation.scopeNote
+    };
+  }
+
   await mkdir(path.dirname(baselinePath), { recursive: true });
   await writeFile(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
 
