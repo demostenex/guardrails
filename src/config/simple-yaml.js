@@ -165,6 +165,7 @@ function parseScalar(value) {
   if (value === "null") return null;
   if (value === "[]") return [];
   if (value === "{}") return {};
+  if (value.startsWith("[")) return parseInlineList(value);
   if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
 
   if (
@@ -175,6 +176,56 @@ function parseScalar(value) {
   }
 
   return value;
+}
+
+// Inline lists: `[a, "b,c", 'd', app/{x,y}/*.php]`.
+// Accepted: quoted items, braces with commas, extra spaces, `[]`, one trailing comma.
+// Rejected with an error (never returned as a literal string): missing "]",
+// unterminated quotes, empty items between commas, nested lists.
+function parseInlineList(value) {
+  if (!value.endsWith("]")) {
+    throw new Error(`Invalid YAML inline list (missing closing "]"): ${value}`);
+  }
+
+  const items = [];
+  let current = "";
+  let quote = null;
+  let braces = 0;
+
+  for (const char of value.slice(1, -1)) {
+    if (quote) {
+      if (char === quote) quote = null;
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === "[" || char === "]") {
+      throw new Error(`Invalid YAML inline list (nested lists are not supported): ${value}`);
+    } else if (char === "{") {
+      braces += 1;
+    } else if (char === "}") {
+      braces -= 1;
+    } else if (char === "," && braces === 0) {
+      items.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  if (quote) {
+    throw new Error(`Invalid YAML inline list (unterminated quote): ${value}`);
+  }
+
+  items.push(current.trim());
+
+  if (items[items.length - 1] === "") {
+    items.pop();
+  }
+
+  if (items.some((item) => item === "")) {
+    throw new Error(`Invalid YAML inline list (empty item): ${value}`);
+  }
+
+  return items.map(parseScalar);
 }
 
 function looksLikeKeyValue(value) {

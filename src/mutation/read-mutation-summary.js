@@ -27,7 +27,8 @@ export async function readMutationSummary(projectPath, config, now = new Date())
 
   try {
     const stats = parseInfectionStats(JSON.parse(await readFile(summaryPath, "utf8")));
-    return withAge({ ...located, status: "ok", ...stats }, fileStat.mtime, settings, now);
+    const { modifiedAt, source } = summaryDate(settings, fileStat.mtime);
+    return withAge({ ...located, status: "ok", ...stats, dateSource: source }, modifiedAt, settings, now);
   } catch (error) {
     return { ...located, status: "invalid", error: error.message };
   }
@@ -60,6 +61,25 @@ export function parseInfectionStats(json) {
     notCovered,
     survivors: escaped + notCovered
   };
+}
+
+// Infection summaries carry no timestamp, so age comes from the file mtime.
+// A copy that does not preserve mtime (plain `cp`) looks fresh; the optional
+// `generated_at` setting overrides it.
+function summaryDate(settings, mtime) {
+  if (settings.generated_at === undefined || settings.generated_at === null) {
+    return { modifiedAt: mtime, source: "mtime" };
+  }
+
+  const explicit = new Date(settings.generated_at);
+
+  if (Number.isNaN(explicit.getTime())) {
+    throw new Error(
+      `Invalid mutation.generated_at: "${settings.generated_at}" (expected an ISO date such as 2026-10-15T01:00:00Z).`
+    );
+  }
+
+  return { modifiedAt: explicit, source: "generated_at" };
 }
 
 function withAge(mutation, modifiedAt, settings, now) {

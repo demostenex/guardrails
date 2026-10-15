@@ -20,6 +20,8 @@ async function project(summary = FIXTURE) {
   return dir;
 }
 
+const REAL_FIXTURE = path.resolve("tests/fixtures/mutation/infection-summary.real.json");
+
 const config = (mutation = {}) => ({ mutation: { summary: "summary.json", ...mutation } });
 
 test("reader parses an Infection summary", async () => {
@@ -31,6 +33,17 @@ test("reader parses an Infection summary", async () => {
   assert.equal(mutation.killed, 199);
   assert.equal(mutation.survivors, 105);
   assert.equal(mutation.scopeNote, "Billing");
+});
+
+test("reader parses a real minified Infection summary", async () => {
+  const mutation = await readMutationSummary(await project(REAL_FIXTURE), config());
+
+  assert.equal(mutation.status, "ok");
+  assert.equal(mutation.msi, 82.57);
+  assert.equal(mutation.coveredMsi, 82.57);
+  assert.equal(mutation.mutantsTotal, 304);
+  assert.equal(mutation.killed, 251);
+  assert.equal(mutation.survivors, 53);
 });
 
 test("reader reports missing, disabled and invalid files without throwing", async () => {
@@ -53,6 +66,28 @@ test("reader warns about stale summaries", async () => {
 
   assert.equal(mutation.stale, true);
   assert.match(mutation.warnings[0], /stale/);
+});
+
+test("a copy without preserved mtime looks fresh unless generated_at is set", async () => {
+  const dir = await project();
+  const now = new Date();
+  const fiveDaysAgo = new Date(now.getTime() - 120 * 3600 * 1000).toISOString();
+
+  const fresh = await readMutationSummary(dir, config({ max_age_hours: 24 }), now);
+  assert.equal(fresh.stale, false);
+  assert.equal(fresh.dateSource, "mtime");
+
+  const explicit = await readMutationSummary(dir, config({ max_age_hours: 24, generated_at: fiveDaysAgo }), now);
+  assert.equal(explicit.stale, true);
+  assert.equal(explicit.dateSource, "generated_at");
+  assert.match(explicit.warnings[0], /120h old/);
+});
+
+test("an invalid generated_at makes the summary invalid with a clear error", async () => {
+  const mutation = await readMutationSummary(await project(), config({ generated_at: "yesterday-ish" }));
+
+  assert.equal(mutation.status, "invalid");
+  assert.match(mutation.error, /mutation\.generated_at.*ISO date/);
 });
 
 const current = (msi, scopeNote = "A") => ({

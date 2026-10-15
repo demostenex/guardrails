@@ -99,6 +99,7 @@ mutation:
   summary: storage/logs/infection-summary.json   # relative to --path
   scope_note: "Billing module"   # free text; shown next to the MSI
   max_age_hours: 168             # warn when the file is older
+  generated_at: null             # optional ISO date; overrides the file mtime (see below)
   fail_on_stale: false           # treat an old file as a violation
   min_msi: null                  # optional floor
   max_drop: 2.0                  # max points lost versus baseline MSI
@@ -112,6 +113,7 @@ policies:
 - `guardrails baseline` also stores the current MSI and scope. `ci` then fails (with `block`) when MSI falls more than `max_drop` points below it, or below `min_msi`.
 - If `min_msi` or `max_drop` is set and the summary file is missing, that is a violation (fails with `block`), so a CI that forgot to run Infection cannot pass silently.
 - If `scope_note` differs between baseline and current scan, `max_drop` cannot be compared: that is a violation until `guardrails baseline` is run again.
+- Infection summaries have no internal date, so their age is the file mtime. Copy them preserving it (`cp -p`, `rsync -t`); a plain `cp` resets the mtime and the stale warning never fires. The recommended way is to preserve the mtime. `mutation.generated_at` (ISO date) is a fallback for when that is impossible, and it is a fixed value in the config: it only makes sense if it is updated on every Infection run. Filled in once, it never ages and the stale warning is meaningless.
 - A stale summary prints a warning in `ci` and `baseline`; with `fail_on_stale: true` it is a violation.
 - An unreadable or unsupported summary format is reported with a clear error and counts as a violation of the policy.
 - Gate against drops, not against a high target: chasing 100% MSI leads to tests that only kill equivalent mutants.
@@ -139,3 +141,10 @@ Every `scan`, `diff`, and `ci` run writes the current report and a timestamped h
 Use `history` to list versions, `compare` to compare the latest two scans, and `maturity` to get a read-only inspection summary. These commands point out where to look; they do not change application code.
 
 `explain` writes `.guardrails/analysis.md` and `.guardrails/analysis.json`. It includes an AI-ready prompt for external analysis, but the command itself is deterministic and read-only with respect to application code.
+
+## Pending Ideas
+
+Not implemented:
+
+- `--summary-date <ISO>` (or an environment variable) on `ci` and `baseline`: a per-run alternative to `mutation.generated_at`, which is a fixed config value.
+- `guardrails --version`: today it fails with "Unknown command".

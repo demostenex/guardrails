@@ -47,3 +47,50 @@ test("loadConfig reads .guardrails.yml and merges defaults", async () => {
     { from: "domain", to: "ui" }
   ]);
 });
+
+async function configFrom(yaml) {
+  const projectPath = path.join(tmpdir(), `guardrails-config-inline-${Date.now()}-${Math.random()}`);
+  await mkdir(projectPath, { recursive: true });
+  await writeFile(path.join(projectPath, ".guardrails.yml"), yaml);
+  return loadConfig(projectPath);
+}
+
+test("loadConfig accepts inline lists", async () => {
+  const config = await configFrom(
+    [
+      "scan:",
+      '  include: [src/**/*.js, "app/{a,b}/*.php", \'x, y.js\']',
+      "  exclude: []",
+      "architecture:",
+      "  layers: [domain, ui]  # comment",
+      ""
+    ].join("\n")
+  );
+
+  assert.deepEqual(config.scan.include, ["src/**/*.js", "app/{a,b}/*.php", "x, y.js"]);
+  assert.deepEqual(config.architecture.layers, ["domain", "ui"]);
+});
+
+// Inline list behavior. Valid input gives a clear array; malformed input throws
+// and never degrades to the literal string "[a, b]".
+const inline = (list) => configFrom(`scan:\n  include: ${list}\n`).then((c) => c.scan.include);
+
+test("inline lists: accepted forms", async () => {
+  assert.deepEqual(await inline('["a,b", c]'), ["a,b", "c"]);
+  assert.deepEqual(await inline("['a', \"b\"]"), ["a", "b"]);
+  assert.deepEqual(await inline("[  a  ,   b  ]"), ["a", "b"]);
+  assert.deepEqual(await inline("[a, b,]"), ["a", "b"]);
+  assert.deepEqual(await inline("[]"), []);
+  assert.deepEqual(await inline("[ ]"), []);
+  assert.deepEqual(await inline('["app/{a,b}/*.php"]'), ["app/{a,b}/*.php"]);
+  assert.deepEqual(await inline("[app/{a,b}/*.php, c]"), ["app/{a,b}/*.php", "c"]);
+});
+
+test("inline lists: malformed forms are rejected with a clear message", async () => {
+  await assert.rejects(inline("[a, b"), /missing closing "\]"/);
+  await assert.rejects(inline('["a, b]'), /unterminated quote/);
+  await assert.rejects(inline("[a, , b]"), /empty item/);
+  await assert.rejects(inline("[,]"), /empty item/);
+  await assert.rejects(inline("[[a], b]"), /nested lists/);
+  await assert.rejects(inline("[a]b]"), /nested lists|missing closing/);
+});
