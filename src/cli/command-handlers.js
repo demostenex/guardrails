@@ -29,18 +29,18 @@ export const commandHandlers = {
   watch: runWatch
 };
 
-async function runScan(projectPath, _parsedArgs, io) {
-  await scanAndPrint(projectPath, io);
+async function runScan(projectPath, parsedArgs, io) {
+  await scanAndPrint(projectPath, io, scanOptions(parsedArgs));
 }
 
-async function runDiff(projectPath, _parsedArgs, io) {
-  const result = await scanDiff(projectPath);
+async function runDiff(projectPath, parsedArgs, io) {
+  const result = await scanDiff(projectPath, scanOptions(parsedArgs));
   const reports = await writeReports(projectPath, result);
   printScanSummary(result, reports, io);
 }
 
-async function runCi(projectPath, _parsedArgs, io) {
-  const result = await scanProject(projectPath);
+async function runCi(projectPath, parsedArgs, io) {
+  const result = await scanProject(projectPath, scanOptions(parsedArgs));
   const reports = await writeReports(projectPath, result);
   const ci = evaluateCi(result);
   printScanSummary(result, reports, io);
@@ -73,8 +73,8 @@ function printMutationGate(gate, io) {
   }
 }
 
-async function runBaseline(projectPath, _parsedArgs, io) {
-  const result = await scanProject(projectPath, { useBaseline: false });
+async function runBaseline(projectPath, parsedArgs, io) {
+  const result = await scanProject(projectPath, { ...scanOptions(parsedArgs), useBaseline: false });
   const baseline = await saveBaseline(projectPath, result);
   writeLine(io.stdout, `Baseline saved with ${baseline.findings.length} finding(s).`);
 
@@ -128,7 +128,7 @@ async function runWatch(projectPath, parsedArgs, io) {
   writeLine(io.stdout, `Watching ${projectPath}. Interval: ${interval}ms.`);
 
   const run = async () => {
-    await scanAndPrint(projectPath, io);
+    await scanAndPrint(projectPath, io, scanOptions(parsedArgs));
   };
 
   await run();
@@ -144,8 +144,12 @@ async function loadOptionalComparison(projectPath) {
   }
 }
 
-async function scanAndPrint(projectPath, io) {
-  const result = await scanProject(projectPath);
+function scanOptions(parsedArgs) {
+  return { summaryDate: parsedArgs.summaryDate ?? undefined };
+}
+
+async function scanAndPrint(projectPath, io, options = {}) {
+  const result = await scanProject(projectPath, options);
   const reports = await writeReports(projectPath, result);
   printScanSummary(result, reports, io);
 }

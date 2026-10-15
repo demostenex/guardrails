@@ -125,3 +125,43 @@ function testIo(output = []) {
     exitCode: 0
   };
 }
+
+test("guardrails prints its version", async () => {
+  const output = [];
+  const exitCode = await runCli(["--version"], testIo(output));
+  const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.join("").trim(), `guardrails ${version}`);
+});
+
+test("--summary-date overrides the mtime for one run and rejects bad values", async () => {
+  const projectPath = path.join(tmpdir(), `guardrails-cli-date-${randomUUID()}`);
+  await mkdir(path.join(projectPath, "src"), { recursive: true });
+  await writeFile(path.join(projectPath, "src/a.js"), "export const a = 1;\n");
+  await writeFile(
+    path.join(projectPath, ".guardrails.yml"),
+    "scan:\n  include:\n    - src/**/*.js\nmutation:\n  summary: summary.json\n  max_age_hours: 24\n"
+  );
+  await writeFile(
+    path.join(projectPath, "summary.json"),
+    JSON.stringify({ stats: { totalMutantsCount: 10, msi: 80 } })
+  );
+  const old = new Date(Date.now() - 100 * 3600 * 1000).toISOString();
+
+  const fresh = [];
+  await runCli(["ci", "--path", projectPath], testIo(fresh));
+  assert.doesNotMatch(fresh.join(""), /stale/);
+
+  const stale = [];
+  assert.equal(await runCli(["ci", "--path", projectPath, "--summary-date", old], testIo(stale)), 0);
+  assert.match(stale.join(""), /Mutation notice: Mutation summary is 100h old/);
+
+  const bad = [];
+  assert.equal(await runCli(["ci", "--path", projectPath, "--summary-date", "nope"], testIo(bad)), 0);
+  assert.match(bad.join(""), /Invalid mutation\.generated_at|generated_at/);
+
+  const missing = [];
+  assert.equal(await runCli(["ci", "--summary-date"], testIo(missing)), 1);
+  assert.match(missing.join(""), /requires an ISO date/);
+});

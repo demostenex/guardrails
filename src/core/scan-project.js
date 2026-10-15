@@ -16,7 +16,7 @@ export async function scanProject(projectPath = process.cwd(), options = {}) {
     changedFiles: options.changedFiles
   });
 
-  const mutation = await readMutationSummary(projectPath, config);
+  const mutation = await readMutationSummary(projectPath, withSummaryDate(config, options.summaryDate));
 
   if (options.useBaseline !== false) {
     const baseline = await loadBaseline(projectPath);
@@ -46,6 +46,15 @@ const SEVERITY_ORDER = {
   medium: 2,
   low: 3
 };
+
+// A per-run date wins over mutation.generated_at, which wins over the file mtime.
+function withSummaryDate(config, summaryDate) {
+  if (!summaryDate) {
+    return config;
+  }
+
+  return { ...config, mutation: { ...config.mutation, generated_at: summaryDate } };
+}
 
 function sortFindings(findings) {
   return [...findings].sort((left, right) => {

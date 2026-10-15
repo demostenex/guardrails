@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { commandHandlers } from "./command-handlers.js";
@@ -8,16 +9,15 @@ const valueOptions = new Map([
   ["-p", "path"],
   ["--interval", "interval"],
   ["--from", "from"],
-  ["--to", "to"]
+  ["--to", "to"],
+  ["--summary-date", "summaryDate"]
 ]);
 const detailsOptions = new Set(["--details", "--manual", "--man"]);
 const detailsAliases = new Set(["detail", "details", "manual", "man"]);
 
 export async function runCli(rawArgs, io = defaultIo()) {
-  const args = parseArgs(rawArgs);
-
   try {
-    await runCommand(args, io);
+    await runCommand(parseArgs(rawArgs), io);
     return io.exitCode ?? 0;
   } catch (error) {
     writeLine(io.stderr, error.message);
@@ -26,6 +26,11 @@ export async function runCli(rawArgs, io = defaultIo()) {
 }
 
 async function runCommand(parsedArgs, io) {
+  if (parsedArgs.version) {
+    writeLine(io.stdout, `guardrails ${await readVersion()}`);
+    return;
+  }
+
   if (parsedArgs.help || parsedArgs.command === "help") {
     writeLine(io.stdout, parsedArgs.details ? detailedHelpText() : shortHelpText());
     return;
@@ -49,7 +54,9 @@ function parseArgs(rawArgs) {
     interval: 300000,
     from: null,
     to: null,
+    summaryDate: null,
     help: false,
+    version: false,
     details: false
   };
 
@@ -64,6 +71,11 @@ function parseArgs(rawArgs) {
     if (arg === "man" && !parsed.command) {
       parsed.command = "help";
       parsed.details = true;
+      continue;
+    }
+
+    if (arg === "--version" || arg === "-v") {
+      parsed.version = true;
       continue;
     }
 
@@ -86,6 +98,9 @@ function parseArgs(rawArgs) {
     if (valueOptions.has(arg)) {
       const key = valueOptions.get(arg);
       const value = rawArgs[index + 1];
+      if (value === undefined && key === "summaryDate") {
+        throw new Error("--summary-date requires an ISO date, e.g. 2026-10-15T01:00:00Z.");
+      }
       parsed[key] = key === "interval" ? Number(value) : value;
       index += 1;
       continue;
@@ -97,6 +112,11 @@ function parseArgs(rawArgs) {
   }
 
   return parsed;
+}
+
+async function readVersion() {
+  const packageUrl = new URL("../../package.json", import.meta.url);
+  return JSON.parse(await readFile(packageUrl, "utf8")).version;
 }
 
 function writeLine(stream, line) {

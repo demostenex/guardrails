@@ -114,6 +114,7 @@ policies:
 - If `min_msi` or `max_drop` is set and the summary file is missing, that is a violation (fails with `block`), so a CI that forgot to run Infection cannot pass silently.
 - If `scope_note` differs between baseline and current scan, `max_drop` cannot be compared: that is a violation until `guardrails baseline` is run again.
 - Infection summaries have no internal date, so their age is the file mtime. Copy them preserving it (`cp -p`, `rsync -t`); a plain `cp` resets the mtime and the stale warning never fires. The recommended way is to preserve the mtime. `mutation.generated_at` (ISO date) is a fallback for when that is impossible, and it is a fixed value in the config: it only makes sense if it is updated on every Infection run. Filled in once, it never ages and the stale warning is meaningless.
+- `--summary-date <ISO>` (on `scan`, `diff`, `ci`, `baseline`, `watch`) sets the summary date for one run only, so it never goes stale like a fixed config value. Precedence: `--summary-date`, then `mutation.generated_at`, then the file mtime. Example: `guardrails ci --summary-date 2026-10-15T01:00:00Z`.
 - A stale summary prints a warning in `ci` and `baseline`; with `fail_on_stale: true` it is a violation.
 - An unreadable or unsupported summary format is reported with a clear error and counts as a violation of the policy.
 - Gate against drops, not against a high target: chasing 100% MSI leads to tests that only kill equivalent mutants.
@@ -142,9 +143,6 @@ Use `history` to list versions, `compare` to compare the latest two scans, and `
 
 `explain` writes `.guardrails/analysis.md` and `.guardrails/analysis.json`. It includes an AI-ready prompt for external analysis, but the command itself is deterministic and read-only with respect to application code.
 
-## Pending Ideas
+## Version
 
-Not implemented:
-
-- `--summary-date <ISO>` (or an environment variable) on `ci` and `baseline`: a per-run alternative to `mutation.generated_at`, which is a fixed config value.
-- `guardrails --version`: today it fails with "Unknown command".
+`guardrails --version` (or `-v`) prints the version from `package.json`.

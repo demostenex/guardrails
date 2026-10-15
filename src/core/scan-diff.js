@@ -9,7 +9,8 @@ export async function scanDiff(projectPath = process.cwd(), options = {}) {
   return scanProject(projectPath, {
     onlyFiles: changedFiles,
     changedFiles,
-    useBaseline: options.useBaseline
+    useBaseline: options.useBaseline,
+    summaryDate: options.summaryDate
   });
 }
 
